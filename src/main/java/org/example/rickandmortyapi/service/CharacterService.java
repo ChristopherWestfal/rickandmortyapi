@@ -2,11 +2,11 @@ package org.example.rickandmortyapi.service;
 
 import org.example.rickandmortyapi.model.RickAndMortyCharacter;
 import org.example.rickandmortyapi.model.RickAndMortyCharacterResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -15,14 +15,17 @@ public class CharacterService {
 
     private final RestClient restClient;
 
-    public CharacterService() {
+    public CharacterService(@Value("${RickAndMortyAPI}") String baseUrl) {
         this.restClient = RestClient.builder()
-                .baseUrl("https://rickandmortyapi.com/api")
+                .baseUrl(baseUrl)
                 .build();
     }
 
     public List<RickAndMortyCharacter> getAllCharactersWithLessDetails() throws IOException {
-        RickAndMortyCharacterResponse response = getCharacterResponse();
+        RickAndMortyCharacterResponse response = restClient.get()
+                .uri("/character")
+                .retrieve()
+                .body(RickAndMortyCharacterResponse.class);
 
         if(response != null)
             return response.getResults();
@@ -31,59 +34,39 @@ public class CharacterService {
     }
 
     public RickAndMortyCharacter getCharacterById(int id) throws IOException {
-        RickAndMortyCharacterResponse response = getCharacterResponse();
+        RickAndMortyCharacter response = restClient.get()
+                .uri("/character/"+id)
+                .retrieve()
+                .body(RickAndMortyCharacter.class);
 
-        if(response != null) {
-            List<RickAndMortyCharacter> results = response.getResults();
-
-            for(RickAndMortyCharacter c : results)
-                if(c.getId() == id)
-                    return c;
-
-            return null;
-        }
+        if(response != null)
+            return response;
         else
             throw new IOException("No Data Found");
     }
 
     public List<RickAndMortyCharacter> getFilteredList(String status) throws IOException {
-        RickAndMortyCharacterResponse response = getCharacterResponse();
-        List<RickAndMortyCharacter> filteredResults = new ArrayList<>();
+        RickAndMortyCharacterResponse response = restClient.get()
+                .uri("/character/?status="+status)
+                .retrieve()
+                .body(RickAndMortyCharacterResponse.class);
 
         if(response != null) {
-            List<RickAndMortyCharacter> results = response.getResults();
-
-            for(RickAndMortyCharacter c : results)
-                if(c.getStatus().equalsIgnoreCase(status))
-                    filteredResults.add(c);
-
-            return filteredResults;
+            return response.getResults();
         }
         else
             throw new IOException("No Data Found");
 
     }
 
-    private RickAndMortyCharacterResponse getCharacterResponse(){
-
-        return restClient.get()
-                .uri("/character")
+    public int getStatisticBySpecies(String species) throws IOException {
+        RickAndMortyCharacterResponse response = restClient.get()
+                .uri("/character/?species="+species)
                 .retrieve()
                 .body(RickAndMortyCharacterResponse.class);
-    }
-
-    public int getStatisticBySpecies(String species) throws IOException {
-        RickAndMortyCharacterResponse response = getCharacterResponse();
 
         if(response != null) {
-            List<RickAndMortyCharacter> results = response.getResults();
-            int counter = 0;
-
-            for(RickAndMortyCharacter c : results)
-                if(c.getSpecies().equalsIgnoreCase(species))
-                    counter++;
-
-            return counter;
+            return response.getInfo().getCount();
         }
         else
             throw new IOException("No Data Found");
